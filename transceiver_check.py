@@ -16,6 +16,12 @@ cisco_template_transceiver_check = ['show interface ethernet {slot_num}/{port_nu
 'slot {slot_num} quoted "show hardware internal tah event-history front-port {port_num}"   | i Got pre 1 | i fault pre 1',
 'slot {slot_num} show hardware internal tah mac hwlib show mac_errors fp-port {port_num}']
 
+huawei_template_transceiver_check = ['display interface {ifName} | exclude threshold|bytes|Mode:|Speed:|Duplex:|Flow-control:|Mdi:|Route | no-more',
+'display lldp neighbor brief | include {ifName} | no-more',
+'display interface {ifName} transceiver verbose | no-more',
+'display logbuffer | include ifName={ifName}, AdminStatus=UP, OperStatus= | no-more',
+'display alarm history | include {ifName} | no-more']
+
 mail_addr = '' #mail_addr
 file_name = 'transceiver_check_result_py_script'
 event_dict = {}
@@ -87,9 +93,6 @@ def result_write_to_file(result):
                                                 f.write('\n')
 
                 f.write('С уважением,\nPy_Script')
-
-
-
         return None
 
 
@@ -121,7 +124,10 @@ if len(sw1) != 0:
         elif sw1.find('Zabbix') > 0:
                 alarm = sw1.split()[9] + ' ' + sw1.split()[10] + ' ' + sw1.split()[11] + ' ' + sw1.split()[12] + ' ' + sw1.split()[14] + ' ' + sw1.split()[15] + ' ' + sw1.split()[16]
                 event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[4], 'alarm': alarm, 'interface': sw1.split()[13], 'description': 'None'}
-
+        elif sw1.find('%%01IFNET') > 0:
+                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[2].strip(':'), 'alarm': sw1.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw1).group().split('=')[-1], 'description': sw1.split('description:---')[-1]}
+        elif sw1.find('%%01BFD') > 0:
+                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[2].strip(':'), 'alarm': sw1.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw1).group().split('=')[-1]}
 if len(sw2) != 0:
         if sw2.find('ETHPORT') > 0:
                 event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].strip('%:'), 'interface': sw2.split()[5], 'description': sw2.split()[6].lstrip('(description:---').rstrip(')')}
@@ -132,7 +138,10 @@ if len(sw2) != 0:
         elif sw2.find('Zabbix') > 0:
                 alarm = sw2.split()[9] + ' ' + sw2.split()[10] + ' ' + sw2.split()[11] + ' ' + sw2.split()[12] + ' ' + sw2.split()[14] + ' ' + sw2.split()[15] + ' ' + sw2.split()[16]
                 event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[4], 'alarm': alarm, 'interface': sw2.split()[13], 'description': 'None'}
-
+        elif sw2.find('%%01IFNET') > 0:
+                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw2).group().split('=')[-1], 'description': sw2.split('description:---')[-1]}
+        elif sw2.find('%%01BFD') > 0:
+                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw2).group().split('=')[-1]}
 
 print('Diagnostic check in progress...')
 for event in event_dict:
