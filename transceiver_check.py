@@ -1,4 +1,4 @@
-#!/usr/bin/env/ python
+#!/usr/bin/python2
 #coding: utf-8
 
 import getpass
@@ -11,16 +11,16 @@ cisco_template_transceiver_check = ['show interface ethernet {slot_num}/{port_nu
 'show lldp neighbors interface ethernet {slot_num}/{port_num} | exclude codes|DOCSIS|WLAN|displayed',
 'show interface ethernet {slot_num}/{port_num} transceiver | i type|serial|id|revision|part',
 'show interface ethernet {slot_num}/{port_num} transceiver details | i Lane|Rx|Tx|Fault',
-'show logging logfile | include "{slot_num}/{port_num} " | i failure | i {year} | last 50',
+'show logging logfile | include "{slot_num}/{port_num} " | i failure | last 50',
 'show interface ethernet {slot_num}/{port_num} counters errors',
 'slot {slot_num} quoted "show hardware internal tah event-history front-port {port_num}"   | i Got pre 1 | i fault pre 1',
 'slot {slot_num} show hardware internal tah mac hwlib show mac_errors fp-port {port_num}']
 
-huawei_template_transceiver_check = ['display interface {ifName} | exclude threshold|bytes|Mode:|Speed:|Duplex:|Flow-control:|Mdi:|Route | no-more',
-'display lldp neighbor brief | include {ifName} | no-more',
-'display interface {ifName} transceiver verbose | no-more',
-'display logbuffer | include ifName={ifName}, AdminStatus=UP, OperStatus= | no-more',
-'display alarm history | include {ifName} | no-more']
+huawei_template_transceiver_check = ['display interface {ifName} | exclude threshold|bytes|Mode:|Speed:|Duplex:|Flow-control:|Mdi:|Route',
+'display lldp neighbor brief | include {ifName}',
+'display interface {ifName} transceiver verbose',
+'display logbuffer | include ifName={ifName}, AdminStatus=UP, OperStatus=',
+'display alarm history | include {ifName}']
 
 mail_addr = '' #mail_addr
 file_name = 'transceiver_check_result_py_script'
@@ -39,9 +39,11 @@ def ssh_connect(ip, username, password, event):
         promt = ssh.before
         if re.search(r'Error:', promt):
                 for command in huawei_template_transceiver_check:
+                        ssh.sendline ('screen-length 0 temporary')
+                        ssh.expect('[>]')
                         ssh.sendline (command.format(ifName = event_dict[event]['interface']))
-                        if 'logbuffer' in command:
-                            time.sleep(5)
+#                        if 'logbuffer' in command:
+#                            time.sleep(5)
                         ssh.expect('>')
                         output = ssh.before.rstrip("<{}>".format(event_dict[event]['switch'])).split('\n')
                         result[(event_dict[event]['switch'], event_dict[event]['interface'])].append(output)
@@ -61,6 +63,7 @@ def ssh_connect(ip, username, password, event):
                                 result[(event_dict[event]['switch'], event_dict[event]['interface'])].append(output)
         ssh.close()
         return result
+
 
 def result_write_to_file(result):
         with open('{file}'.format(file = file_name), 'w') as f:
@@ -115,33 +118,20 @@ ticket = raw_input('IM:')
 
 
 if len(sw1) != 0:
-        if sw1.find('ETHPORT') > 0:
-                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[2].strip(':'), 'alarm': sw1.split()[3].strip('%:'), 'interface': sw1.split()[5], 'description': sw1.split()[6].lstrip('(description:---').rstrip(')')}
-        elif sw1.find('BFD') > 0:
-                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[2].strip(':'), 'alarm': sw1.split()[3].strip('%:'), 'interface': sw1.split()[12].replace('Eth', 'Ethernet'), 'description': sw1.split()[-1].lstrip('(description:---').rstrip(')')}
-        elif sw1.find('OSPF') > 0:
-                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[2].strip(':'), 'alarm': sw1.split()[3].strip('%:'), 'interface': sw1.split()[9], 'description': sw1.split()[-1].lstrip('(description:---').rstrip(')')}
-        elif sw1.find('Zabbix') > 0:
-                alarm = sw1.split()[9] + ' ' + sw1.split()[10] + ' ' + sw1.split()[11] + ' ' + sw1.split()[12] + ' ' + sw1.split()[14] + ' ' + sw1.split()[15] + ' ' + sw1.split()[16]
-                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[4], 'alarm': alarm, 'interface': sw1.split()[13], 'description': 'None'}
-        elif sw1.find('%%01IFNET') > 0:
-                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[2].strip(':'), 'alarm': sw1.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw1).group().split('=')[-1], 'description': sw1.split('description:---')[-1]}
-        elif sw1.find('%%01BFD') > 0:
-                event_dict['event1'] = {'date': sw1.split()[0], 'time': sw1.split()[1].strip(':'), 'switch': sw1.split()[2].strip(':'), 'alarm': sw1.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw1).group().split('=')[-1]}
+        if re.search(r"ifName=[0-9A-Za-z/]*", sw1):
+                event_dict['event1'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw1).group(), 'interface': re.search(r"ifName=[0-9A-Za-z/]*", sw1).group().lstrip("ifName=")}
+        elif re.search(r"(Ethernet|Et|Eth)\d*/\d*", sw1):
+                event_dict['event1'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw1).group(), 'interface': 'Ethernet' + re.search(r"[^(Ethernet|Et|Eth)]\d*/\d*", sw1).group()}
+        elif re.search(r"\d*GE(\d*/?)+", sw1):                     
+                event_dict['event1'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw1).group(), 'interface': re.search(r"\d*GE(\d*/?)+", sw1).group()}
 if len(sw2) != 0:
-        if sw2.find('ETHPORT') > 0:
-                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].strip('%:'), 'interface': sw2.split()[5], 'description': sw2.split()[6].lstrip('(description:---').rstrip(')')}
-        elif sw2.find('BFD') > 0:
-                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].strip('%:'), 'interface': sw2.split()[12].replace('Eth', 'Ethernet'), 'description': sw2.split()[-1].lstrip('(description:---').rstrip(')')}
-        elif sw2.find('OSPF') > 0:
-                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].strip('%:'), 'interface': sw2.split()[9], 'description': sw2.split()[-1].lstrip('(description:---').rstrip(')')}
-        elif sw2.find('Zabbix') > 0:
-                alarm = sw2.split()[9] + ' ' + sw2.split()[10] + ' ' + sw2.split()[11] + ' ' + sw2.split()[12] + ' ' + sw2.split()[14] + ' ' + sw2.split()[15] + ' ' + sw2.split()[16]
-                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[4], 'alarm': alarm, 'interface': sw2.split()[13], 'description': 'None'}
-        elif sw2.find('%%01IFNET') > 0:
-                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw2).group().split('=')[-1], 'description': sw2.split('description:---')[-1]}
-        elif sw2.find('%%01BFD') > 0:
-                event_dict['event2'] = {'date': sw2.split()[0], 'time': sw2.split()[1].strip(':'), 'switch': sw2.split()[2].strip(':'), 'alarm': sw2.split()[3].split(';')[0], 'interface': re.search(r'[(Interface)(if)]Name=\d{1,3}GE\d{1,2}(/\d{1,2})+', sw2).group().split('=')[-1]}
+        if re.search(r"ifName=[0-9A-Za-z/]*", sw2):
+                event_dict['event2'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw2).group(), 'interface': re.search(r"ifName=[0-9A-Za-z/]*", sw2).group().lstrip("ifName=")}
+        elif re.search(r"(Ethernet|Et|Eth)\d*/\d*", sw2):
+                event_dict['event2'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw2).group(), 'interface': 'Ethernet' + re.search(r"[^(Ethernet|Et|Eth)]\d*/\d*", sw2).group()}
+        elif re.search(r"\d*GE(\d*/?)+", sw2):
+                event_dict['event2'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw2).group(), 'interface': re.search(r"\d*GE(\d*/?)+", sw2).group()}
+																																																																						
 
 print('Diagnostic check in progress...')
 for event in event_dict:
