@@ -22,7 +22,7 @@ huawei_template_transceiver_check = ['display interface {ifName} | exclude thres
 'display logbuffer | include ifName={ifName}, AdminStatus=UP, OperStatus=',
 'display alarm history | include {ifName}']
 
-mail_addr = '' #mail_addr
+mail_addr = 'AOBedin@omega.sbrf.ru, 2nd_line_LAN_COD_CK_SPb@omega.sbrf.ru, PB_LAN@omega.sbrf.ru'
 file_name = 'transceiver_check_result_py_script'
 event_dict = {}
 result = {}
@@ -88,13 +88,12 @@ def result_write_to_file(result):
 #                                        f.write('{}#'.format(index[0]))
                                 f.write('{}#'.format(index[0]))
                                 for line in check:
-                                        if line.startswith(' show') or line.startswith(' slot') or line.startswith('display'):
-                                                f.writelines(line)
-                                        else:
-#                                               f.write('\n')
-                                                f.writelines(line)
-                                                f.write('\n')
-
+					if line.startswith(' show') or line.startswith(' slot') or line.startswith('display'):
+						f.writelines(line)
+					else:
+#						f.write('\n')
+						f.writelines(line)
+		                                f.write('\n')
                 f.write('С уважением,\nPy_Script')
         return None
 
@@ -120,18 +119,13 @@ ticket = raw_input('IM:')
 if len(sw1) != 0:
         if re.search(r"ifName=[0-9A-Za-z/]*", sw1):
                 event_dict['event1'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw1).group(), 'interface': re.search(r"ifName=[0-9A-Za-z/]*", sw1).group().lstrip("ifName=")}
-        elif re.search(r"(Ethernet|Et|Eth)\d*/\d*", sw1):
-                event_dict['event1'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw1).group(), 'interface': 'Ethernet' + re.search(r"[^(Ethernet|Et|Eth)]\d*/\d*", sw1).group()}
-        elif re.search(r"\d*GE(\d*/?)+", sw1):                     
-                event_dict['event1'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw1).group(), 'interface': re.search(r"\d*GE(\d*/?)+", sw1).group()}
+        elif re.search(r"([Ee]thernet|[Ee]t|[Ee]th|[Ee])\d*/\d*", sw1):
+                event_dict['event1'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw1).group(), 'interface': 'Ethernet' + re.search(r"[^(Ethernet|ethernet|Et|et|Eth|eth|E|e)]\d*/\d*", sw1).group()}
 if len(sw2) != 0:
         if re.search(r"ifName=[0-9A-Za-z/]*", sw2):
                 event_dict['event2'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw2).group(), 'interface': re.search(r"ifName=[0-9A-Za-z/]*", sw2).group().lstrip("ifName=")}
-        elif re.search(r"(Ethernet|Et|Eth)\d*/\d*", sw2):
-                event_dict['event2'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw2).group(), 'interface': 'Ethernet' + re.search(r"[^(Ethernet|Et|Eth)]\d*/\d*", sw2).group()}
-        elif re.search(r"\d*GE(\d*/?)+", sw2):
-                event_dict['event2'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw2).group(), 'interface': re.search(r"\d*GE(\d*/?)+", sw2).group()}
-																																																																						
+        elif re.search(r"([Ee]thernet|[Ee]t|[Ee]th|[Ee])\d*/\d*", sw2):
+                event_dict['event2'] = {'switch': re.search(r"[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}-[0-9A-Za-z]{2,4}", sw2).group(), 'interface': 'Ethernet' + re.search(r"[^(Ethernet|ethernet|Et|et|Eth|eth|E|e)]\d*/\d*", sw2).group()}
 
 print('Diagnostic check in progress...')
 for event in event_dict:
